@@ -140,8 +140,8 @@ func (t *Target) SetMetadataStore(s MetricMetadataStore) {
 	t.metadata = s
 }
 
-// hash returns an identifying hash for the target.
-func (t *Target) hash() uint64 {
+// Hash returns an identifying hash for the target.
+func (t *Target) Hash() uint64 {
 	h := fnv.New64a()
 
 	fmt.Fprintf(h, "%016d", t.labels.Hash())
@@ -157,7 +157,7 @@ func (t *Target) offset(interval time.Duration, offsetSeed uint64) time.Duration
 	// Elapsed ns within the interval; walks forward linearly to the next tick.
 	var (
 		bns = int64(interval) - now%int64(interval)
-		m   = (t.hash() ^ offsetSeed) % uint64(interval)
+		m   = (t.Hash() ^ offsetSeed) % uint64(interval)
 		acc = bns + int64(m)
 	)
 	if acc > int64(interval) {
