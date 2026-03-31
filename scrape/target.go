@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net"
 	"net/url"
 	"strings"
 	"sync"
@@ -143,6 +144,9 @@ func (t *Target) SetMetadataStore(s MetricMetadataStore) {
 // Hash returns an identifying hash for the target.
 func (t *Target) Hash() uint64 {
 	h := fnv.New64a()
+
+	addr := t.labels.Get(model.AddressLabel)
+	_, _, _ = net.SplitHostPort(addr)
 
 	fmt.Fprintf(h, "%016d", t.labels.Hash())
 	h.Write([]byte(t.URL().String()))
