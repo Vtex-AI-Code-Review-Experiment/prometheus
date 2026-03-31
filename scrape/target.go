@@ -568,20 +568,7 @@ func PopulateDiscoveredLabels(lb *labels.Builder, cfg *config.ScrapeConfig, tLab
 		}
 	}
 
-	// Copy labels into the labelset for the target if they are not set already.
-	scrapeLabels := []labels.Label{
-		{Name: model.JobLabel, Value: cfg.JobName},
-		{Name: model.ScrapeIntervalLabel, Value: cfg.ScrapeInterval.String()},
-		{Name: model.ScrapeTimeoutLabel, Value: cfg.ScrapeTimeout.String()},
-		{Name: model.MetricsPathLabel, Value: cfg.MetricsPath},
-		{Name: model.SchemeLabel, Value: cfg.Scheme},
-	}
-
-	for _, l := range scrapeLabels {
-		if lb.Get(l.Name) == "" {
-			lb.Set(l.Name, l.Value)
-		}
-	}
+	config.ApplyDiscoveredScrapeDefaults(lb, cfg)
 	// Encode scrape query parameters as labels.
 	for k, v := range cfg.Params {
 		if name := model.ParamLabelPrefix + k; len(v) > 0 && lb.Get(name) == "" {
