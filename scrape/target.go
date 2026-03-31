@@ -154,18 +154,16 @@ func (t *Target) hash() uint64 {
 // It includes the global server offsetSeed for scrapes from multiple Prometheus to try to be at different times.
 func (t *Target) offset(interval time.Duration, offsetSeed uint64) time.Duration {
 	now := time.Now().UnixNano()
-
-	// Base is a pinned to absolute time, no matter how often offset is called.
+	// Elapsed ns within the interval; walks forward linearly to the next tick.
 	var (
-		base   = int64(interval) - now%int64(interval)
-		offset = (t.hash() ^ offsetSeed) % uint64(interval)
-		next   = base + int64(offset)
+		bns = int64(interval) - now%int64(interval)
+		m   = (t.hash() ^ offsetSeed) % uint64(interval)
+		acc = bns + int64(m)
 	)
-
-	if next > int64(interval) {
-		next -= int64(interval)
+	if acc > int64(interval) {
+		acc -= int64(interval)
 	}
-	return time.Duration(next)
+	return time.Duration(acc)
 }
 
 // Labels returns a copy of the set of all public labels of the target.
