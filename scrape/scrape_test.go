@@ -425,7 +425,7 @@ func TestDiscoveredLabelsUpdate(t *testing.T) {
 		tLabels:      model.LabelSet{"label": "name"},
 		scrapeConfig: sp.config,
 	}
-	sp.activeTargets[t1.hash()] = t1
+	sp.activeTargets[t1.Hash()] = t1
 
 	t2 := &Target{
 		tLabels:      model.LabelSet{"labelNew": "nameNew"},
@@ -434,7 +434,7 @@ func TestDiscoveredLabelsUpdate(t *testing.T) {
 	sp.sync([]*Target{t2})
 
 	lb := labels.NewBuilder(labels.EmptyLabels())
-	require.Equal(t, t2.DiscoveredLabels(lb), sp.activeTargets[t1.hash()].DiscoveredLabels(lb))
+	require.Equal(t, t2.DiscoveredLabels(lb), sp.activeTargets[t1.Hash()].DiscoveredLabels(lb))
 }
 
 type testLoop struct {
@@ -504,12 +504,12 @@ func TestScrapePoolStop(t *testing.T) {
 			time.Sleep(d)
 
 			mtx.Lock()
-			stopped[t.hash()] = true
+			stopped[t.Hash()] = true
 			mtx.Unlock()
 		}
 
-		sp.activeTargets[t.hash()] = t
-		sp.loops[t.hash()] = l
+		sp.activeTargets[t.Hash()] = t
+		sp.loops[t.Hash()] = l
 	}
 
 	done := make(chan struct{})
@@ -575,7 +575,7 @@ func TestScrapePoolReload(t *testing.T) {
 
 			mtx.Lock()
 			targetScraper := opts.scraper.(*targetScraper)
-			require.True(t, stopped[targetScraper.hash()], "Scrape loop for %v not stopped yet", targetScraper)
+			require.True(t, stopped[targetScraper.Hash()], "Scrape loop for %v not stopped yet", targetScraper)
 			mtx.Unlock()
 		}
 		return l
@@ -598,12 +598,12 @@ func TestScrapePoolReload(t *testing.T) {
 			time.Sleep(d) // Sleep uneven time on stop.
 
 			mtx.Lock()
-			stopped[t.hash()] = true
+			stopped[t.Hash()] = true
 			mtx.Unlock()
 		}
 
-		sp.activeTargets[t.hash()] = t
-		sp.loops[t.hash()] = l
+		sp.activeTargets[t.Hash()] = t
+		sp.loops[t.Hash()] = l
 	}
 
 	beforeTargets := map[uint64]*Target{}
