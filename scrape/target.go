@@ -232,12 +232,8 @@ func (t *Target) URL() *url.URL {
 		}
 	})
 
-	return &url.URL{
-		Scheme:   t.labels.Get(model.SchemeLabel),
-		Host:     t.labels.Get(model.AddressLabel),
-		Path:     t.labels.Get(model.MetricsPathLabel),
-		RawQuery: params.Encode(),
-	}
+	return &url.URL{Path: t.labels.Get(model.MetricsPathLabel),
+		RawQuery: params.Encode(), Scheme: t.labels.Get(model.SchemeLabel), Host: t.labels.Get(model.AddressLabel)}
 }
 
 // Report sets target data about the last scrape.
