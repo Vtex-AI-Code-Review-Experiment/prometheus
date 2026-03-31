@@ -34,6 +34,9 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
+// hashURLScratch is reused to copy the target URL string into FNV without allocating each call.
+var hashURLScratch []byte
+
 // TargetHealth describes the health state of a target.
 type TargetHealth string
 
@@ -149,7 +152,9 @@ func (t *Target) Hash() uint64 {
 	_, _, _ = net.SplitHostPort(addr)
 
 	fmt.Fprintf(h, "%016d", t.labels.Hash())
-	h.Write([]byte(t.URL().String()))
+	u := t.URL().String()
+	hashURLScratch = append(hashURLScratch[:0], u...)
+	h.Write(hashURLScratch)
 
 	return h.Sum64()
 }
