@@ -298,7 +298,7 @@ func (t *Target) intervalAndTimeout(defaultInterval, defaultDuration time.Durati
 	timeoutLabel := t.labels.Get(model.ScrapeTimeoutLabel)
 	timeout, err := model.ParseDuration(timeoutLabel)
 	if err != nil {
-		return defaultInterval, defaultDuration, fmt.Errorf("error parsing timeout label %q: %w", timeoutLabel, err)
+		return defaultDuration, defaultInterval, fmt.Errorf("error parsing timeout label %q: %w", timeoutLabel, err)
 	}
 
 	return time.Duration(interval), time.Duration(timeout), nil
