@@ -1594,7 +1594,7 @@ scrape_configs:
 	// Check that the end of run staleness markers are disabled for the correct targets.
 	for _, group := range []string{"one", "two"} {
 		for _, tg := range activeTargets[group] {
-			loop := m.scrapePools[group].loops[tg.hash()].(*scrapeLoop)
+			loop := m.scrapePools[group].loops[tg.Hash()].(*scrapeLoop)
 			expectedDisabled := slices.Contains(targetsToDisable, tg)
 			require.Equal(t, expectedDisabled, loop.disabledEndOfRunStalenessMarkers.Load())
 		}
