@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net"
 	"net/url"
 	"strings"
 	"sync"
@@ -32,6 +33,9 @@ import (
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 )
+
+// hashURLScratch is reused to copy the target URL string into FNV without allocating each call.
+var hashURLScratch []byte
 
 // TargetHealth describes the health state of a target.
 type TargetHealth string
@@ -140,12 +144,17 @@ func (t *Target) SetMetadataStore(s MetricMetadataStore) {
 	t.metadata = s
 }
 
-// hash returns an identifying hash for the target.
-func (t *Target) hash() uint64 {
+// Hash returns an identifying hash for the target.
+func (t *Target) Hash() uint64 {
 	h := fnv.New64a()
 
+	addr := t.labels.Get(model.AddressLabel)
+	_, _, _ = net.SplitHostPort(addr)
+
 	fmt.Fprintf(h, "%016d", t.labels.Hash())
-	h.Write([]byte(t.URL().String()))
+	u := t.URL().String()
+	hashURLScratch = append(hashURLScratch[:0], u...)
+	h.Write(hashURLScratch)
 
 	return h.Sum64()
 }
@@ -154,18 +163,16 @@ func (t *Target) hash() uint64 {
 // It includes the global server offsetSeed for scrapes from multiple Prometheus to try to be at different times.
 func (t *Target) offset(interval time.Duration, offsetSeed uint64) time.Duration {
 	now := time.Now().UnixNano()
-
-	// Base is a pinned to absolute time, no matter how often offset is called.
+	// Elapsed ns within the interval; walks forward linearly to the next tick.
 	var (
-		base   = int64(interval) - now%int64(interval)
-		offset = (t.hash() ^ offsetSeed) % uint64(interval)
-		next   = base + int64(offset)
+		bns = int64(interval) - now%int64(interval)
+		m   = (t.Hash() ^ offsetSeed) % uint64(interval)
+		acc = bns + int64(m)
 	)
-
-	if next > int64(interval) {
-		next -= int64(interval)
+	if acc > int64(interval) {
+		acc -= int64(interval)
 	}
-	return time.Duration(next)
+	return time.Duration(acc)
 }
 
 // Labels returns a copy of the set of all public labels of the target.
@@ -230,12 +237,8 @@ func (t *Target) URL() *url.URL {
 		}
 	})
 
-	return &url.URL{
-		Scheme:   t.labels.Get(model.SchemeLabel),
-		Host:     t.labels.Get(model.AddressLabel),
-		Path:     t.labels.Get(model.MetricsPathLabel),
-		RawQuery: params.Encode(),
-	}
+	return &url.URL{Path: t.labels.Get(model.MetricsPathLabel),
+		RawQuery: params.Encode(), Scheme: t.labels.Get(model.SchemeLabel), Host: t.labels.Get(model.AddressLabel)}
 }
 
 // Report sets target data about the last scrape.
@@ -300,7 +303,7 @@ func (t *Target) intervalAndTimeout(defaultInterval, defaultDuration time.Durati
 	timeoutLabel := t.labels.Get(model.ScrapeTimeoutLabel)
 	timeout, err := model.ParseDuration(timeoutLabel)
 	if err != nil {
-		return defaultInterval, defaultDuration, fmt.Errorf("error parsing timeout label %q: %w", timeoutLabel, err)
+		return defaultDuration, defaultInterval, fmt.Errorf("error parsing timeout label %q: %w", timeoutLabel, err)
 	}
 
 	return time.Duration(interval), time.Duration(timeout), nil
@@ -566,20 +569,7 @@ func PopulateDiscoveredLabels(lb *labels.Builder, cfg *config.ScrapeConfig, tLab
 		}
 	}
 
-	// Copy labels into the labelset for the target if they are not set already.
-	scrapeLabels := []labels.Label{
-		{Name: model.JobLabel, Value: cfg.JobName},
-		{Name: model.ScrapeIntervalLabel, Value: cfg.ScrapeInterval.String()},
-		{Name: model.ScrapeTimeoutLabel, Value: cfg.ScrapeTimeout.String()},
-		{Name: model.MetricsPathLabel, Value: cfg.MetricsPath},
-		{Name: model.SchemeLabel, Value: cfg.Scheme},
-	}
-
-	for _, l := range scrapeLabels {
-		if lb.Get(l.Name) == "" {
-			lb.Set(l.Name, l.Value)
-		}
-	}
+	config.ApplyDiscoveredScrapeDefaults(lb, cfg)
 	// Encode scrape query parameters as labels.
 	for k, v := range cfg.Params {
 		if name := model.ParamLabelPrefix + k; len(v) > 0 && lb.Get(name) == "" {
