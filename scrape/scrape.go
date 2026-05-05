@@ -445,7 +445,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 	sp.targetMtx.Lock()
 	escapingScheme, _ := config.ToEscapingScheme(sp.config.MetricNameEscapingScheme, sp.config.MetricNameValidationScheme)
 	for _, t := range targets {
-		hash := t.hash()
+		hash := t.Hash()
 
 		if _, ok := sp.activeTargets[hash]; !ok {
 			// The scrape interval and timeout labels are set to the config's values initially,
@@ -544,7 +544,7 @@ func (sp *scrapePool) disableEndOfRunStalenessMarkers(targets []*Target) {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
 	for i := range targets {
-		if l, ok := sp.loops[targets[i].hash()]; ok {
+		if l, ok := sp.loops[targets[i].Hash()]; ok {
 			l.disableEndOfRunStalenessMarkers()
 		}
 	}
